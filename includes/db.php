@@ -2,7 +2,7 @@
 // includes/db.php
 
 // Define MySQL connection parameters (can be extracted to config.php)
-define('DB_HOST', 'localhost');
+define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'celia_chess');
 define('DB_USER', 'root');
 define('DB_PASS', '');
