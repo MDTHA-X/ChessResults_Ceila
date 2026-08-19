@@ -12,7 +12,8 @@ class DB {
 
     public static function get() {
         if (self::$pdo === null) {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            // Updated DSN to connect to local XAMPP port 10000
+            $dsn = "mysql:host=" . DB_HOST . ";port=10000;dbname=" . DB_NAME . ";charset=utf8mb4";
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

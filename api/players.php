@@ -38,6 +38,30 @@ if ($method === 'GET') {
         http_response_code(400);
         echo json_encode(['error' => 'Player name already exists in this tournament']);
     }
+} else if ($method === 'PUT') {
+    require_login();
+    $input = json_decode(file_get_contents('php://input'), true);
+    $id = $input['id'] ?? null;
+    $name = $input['name'] ?? null;
+    $rating = $input['rating'] ?? null;
+    $active = isset($input['active']) ? (int)$input['active'] : null;
+
+    if (!$id || !$name || $rating === null || $active === null) {
+        http_response_code(400);
+        echo json_encode(['error' => 'id, name, rating, and active are required']);
+        exit;
+    }
+
+    try {
+        DB::query(
+            "UPDATE players SET name = ?, rating = ?, active = ? WHERE id = ?",
+            [$name, $rating, $active, $id]
+        );
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Failed to update player (name might already exist)']);
+    }
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Method Not Allowed']);

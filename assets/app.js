@@ -271,15 +271,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 html += `<div class="card table-container"><table>
-                    <thead><tr><th>Name</th><th>Rating</th><th>Status</th></tr></thead><tbody>`;
+                    <thead><tr><th>Name</th><th>Rating</th><th>Status</th>${window.isAdmin ? '<th>Action</th>' : ''}</tr></thead><tbody>`;
                 players.forEach(p => {
+                    let statusBadge = p.active ? '<span class="badge badge-active" style="background:#10b981; color:white;">Active</span>' : '<span class="badge" style="background:#ef4444; color:white;">Inactive</span>';
                     html += `<tr>
                         <td style="font-weight: 500; color: white;">${p.name}</td>
                         <td>${p.rating}</td>
-                        <td><span class="badge badge-active">Active</span></td>
+                        <td>${statusBadge}</td>
+                        ${window.isAdmin ? `<td><button class="btn btn-outline btn-sm edit-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" data-rating="${p.rating}" data-active="${p.active}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Edit</button></td>` : ''}
                     </tr>`;
                 });
-                if (players.length === 0) html += `<tr><td colspan="3" class="text-center text-muted">No players added yet</td></tr>`;
+                if (players.length === 0) html += `<tr><td colspan="${window.isAdmin ? 4 : 3}" class="text-center text-muted">No players added yet</td></tr>`;
                 html += `</tbody></table></div>`;
             }
 
@@ -309,6 +311,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderTournamentDetail(id, 'players'); // reload and stay on players tab
                 });
             }
+
+            document.querySelectorAll('.edit-player-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const pid = e.target.dataset.id;
+                    const oldName = e.target.dataset.name;
+                    const oldRating = e.target.dataset.rating;
+                    const oldActive = e.target.dataset.active == "1";
+
+                    const newName = prompt("Enter player name:", oldName);
+                    if (newName === null || newName.trim() === '') return;
+                    
+                    const newRating = prompt("Enter rating:", oldRating);
+                    if (newRating === null || newRating.trim() === '') return;
+
+                    const activeConfirm = confirm(`Is this player currently ACTIVE in the tournament?\nClick OK for Active, Cancel for Inactive.`);
+
+                    await fetch('api/players.php', {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            id: pid,
+                            name: newName.trim(),
+                            rating: parseInt(newRating) || 1200,
+                            active: activeConfirm ? 1 : 0
+                        })
+                    });
+                    renderTournamentDetail(id, 'players');
+                });
+            });
             
             const btnGenerateRound = document.getElementById('btnGenerateRound');
             if (btnGenerateRound) {
