@@ -197,6 +197,120 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!pl) return 'Unknown';
             return `(${playerSeeds[pl.id]}) ${pl.name}`;
         }
+
+        function getFideDp(p) {
+            if (p >= 1.0) return 800;
+            if (p <= 0.0) return -800;
+            return Math.round(-400 * Math.log(1/p - 1) / Math.LN10);
+        }
+
+        function showPlayerDetails(pId) {
+            pId = parseInt(pId);
+            const pl = players.find(x => x.id === pId);
+            if (!pl) return;
+            const st = standings.find(x => x.player_id === pId);
+            const rank = standings.findIndex(x => x.player_id === pId) + 1;
+            
+            let games = [];
+            rounds.filter(r => r.status === 'completed' || r.status === 'draft').forEach(r => {
+                r.pairings.forEach(p => {
+                    if (p.white_id === pId || p.black_id === pId || p.bye_for_id === pId) {
+                        games.push({ round: r, pairing: p });
+                    }
+                });
+            });
+
+            let oppRatingsSum = 0;
+            let oppCount = 0;
+            let pointsScored = 0;
+            let gamesHtml = `<div class="table-container" style="margin-top: 1rem;"><table>
+                <thead><tr><th>Rd.</th><th>Bo.</th><th>SNo</th><th>Name</th><th>Rtg</th><th>Batch</th><th>Pts.</th><th>Res.</th></tr></thead>
+                <tbody>`;
+
+            games.forEach(g => {
+                const isWhite = g.pairing.white_id === pId;
+                const isBye = g.pairing.is_bye;
+                let oppId = isWhite ? g.pairing.black_id : g.pairing.white_id;
+                let opp = players.find(x => x.id === oppId);
+                let oppSt = standings.find(x => x.player_id === oppId);
+                
+                let sNo = isBye ? '-' : (playerSeeds[oppId] || '-');
+                let oppName = isBye ? 'BYE' : (opp ? opp.name : '-');
+                let oppRtg = isBye ? '-' : (opp ? opp.rating : '-');
+                let oppBatch = isBye ? '-' : (opp ? (opp.batch || '-') : '-');
+                let oppPts = isBye ? '-' : (oppSt ? oppSt.points : 0);
+                
+                let resStr = '-';
+                if (g.round.status === 'completed' || g.pairing.result) {
+                    if (isBye) {
+                        pointsScored += 1;
+                        resStr = '1';
+                    } else if (g.pairing.result === '1-0') {
+                        if (isWhite) { pointsScored += 1; resStr = '1'; } else { resStr = '0'; }
+                    } else if (g.pairing.result === '0-1') {
+                        if (!isWhite) { pointsScored += 1; resStr = '1'; } else { resStr = '0'; }
+                    } else if (g.pairing.result === '1/2') {
+                        pointsScored += 0.5;
+                        resStr = '½';
+                    }
+                }
+                
+                if (!isBye && oppRtg !== '-') {
+                    oppRatingsSum += parseInt(oppRtg);
+                    oppCount++;
+                }
+
+                gamesHtml += `<tr>
+                    <td>${g.round.number}</td>
+                    <td>${g.pairing.board}</td>
+                    <td>${sNo}</td>
+                    <td><a href="#" class="player-link" data-id="${oppId}" style="color: var(--primary); text-decoration: none;">${oppName}</a></td>
+                    <td>${oppRtg}</td>
+                    <td>${oppBatch}</td>
+                    <td>${oppPts}</td>
+                    <td style="font-weight: bold;">${resStr}</td>
+                </tr>`;
+            });
+            gamesHtml += `</tbody></table></div>`;
+
+            let Ra = oppCount > 0 ? Math.round(oppRatingsSum / oppCount) : 0;
+            let Rp = 0;
+            if (oppCount > 0) {
+                let p = pointsScored / oppCount;
+                let dp = getFideDp(p);
+                Rp = Ra + dp;
+            }
+
+            let html = `
+                <h2 style="margin-bottom: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0;">Player info</h2>
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 0.5rem; line-height: 1.6; margin-bottom: 1rem; text-align: left;">
+                    <div style="color: var(--text-muted);">Name</div><div style="font-weight: 500;">${pl.name}</div>
+                    <div style="color: var(--text-muted);">Title</div><div>${pl.title || '-'}</div>
+                    <div style="color: var(--text-muted);">Sex</div><div>${pl.sex || '-'}</div>
+                    <div style="color: var(--text-muted);">Batch</div><div>${pl.batch || '-'}</div>
+                    <div style="color: var(--text-muted);">Starting rank</div><div>${playerSeeds[pId]}</div>
+                    <div style="color: var(--text-muted);">Rating</div><div>${pl.rating}</div>
+                    <div style="color: var(--text-muted);">Performance</div><div>${oppCount > 0 ? Rp : '-'}</div>
+                    <div style="color: var(--text-muted);">Points</div><div>${st ? st.points : 0}</div>
+                    <div style="color: var(--text-muted);">Rank</div><div>${rank}</div>
+                </div>
+                ${gamesHtml}
+            `;
+            
+            document.getElementById('playerModalBody').innerHTML = html;
+            
+            // Rebind player links inside the modal!
+            document.getElementById('playerModalBody').querySelectorAll('.player-link').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (e.target.dataset.id && e.target.dataset.id !== 'undefined') {
+                        showPlayerDetails(e.target.dataset.id);
+                    }
+                });
+            });
+
+            document.getElementById('playerModal').style.display = 'block';
+        }
         
         function render() {
             let html = `
@@ -217,19 +331,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeTab === 'standings') {
                 html += `<div class="card table-container"><table>
                     <thead><tr>
-                        <th>Rk</th><th>Name</th><th>Rating</th><th>Pts</th><th>BH</th><th>SB</th>
+                        <th>Rk</th><th>SNo</th><th>Name</th><th>Rating</th><th>Pts</th><th>BH-1</th><th>BH</th>
                     </tr></thead><tbody>`;
-                standings.forEach(s => {
+                standings.forEach((st, i) => {
                     html += `<tr>
-                        <td>${s.rank}</td>
-                        <td style="font-weight: 500; color: white;">${s.name}</td>
-                        <td>${s.rating}</td>
-                        <td style="font-weight: 700; color: var(--primary);">${s.score}</td>
-                        <td>${s.buchholz}</td>
-                        <td>${s.sonnebornBerger}</td>
+                        <td>${i + 1}</td>
+                        <td>${playerSeeds[st.player_id]}</td>
+                        <td><a href="#" class="player-link" data-id="${st.player_id}" style="color: var(--primary); text-decoration: none;">${st.name}</a></td>
+                        <td>${st.rating}</td>
+                        <td style="font-weight: bold;">${st.points}</td>
+                        <td>${st.buchholz_cut1}</td>
+                        <td>${st.buchholz}</td>
                     </tr>`;
                 });
-                if (standings.length === 0) html += `<tr><td colspan="6" class="text-center text-muted">No standings available yet</td></tr>`;
+                if (standings.length === 0) html += `<tr><td colspan="7" class="text-center text-muted">No standings available yet</td></tr>`;
                 html += `</tbody></table></div>`;
             } else if (activeTab === 'rounds') {
                 html += `<div class="card mb-4 flex justify-between items-center">
@@ -280,9 +395,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     html += `</tbody></table></div>`;
                     
                     if (r.status === 'draft' && window.isAdmin) {
-                        html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem; gap: 1rem;">
-                            <button class="btn btn-outline btn-discard-round" style="border-color: #ef4444; color: #ef4444;" data-round="${r.id}">Discard Round</button>
-                            <button class="btn btn-success btn-complete-round" data-round="${r.id}">Complete Round ${r.number}</button>
+                        html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem; gap: 1rem;">`;
+                        if (r.number > 1) {
+                            html += `<button class="btn btn-outline btn-discard-round" style="border-color: #ef4444; color: #ef4444;" data-round="${r.id}">Discard Round</button>`;
+                        }
+                        html += `<button class="btn btn-success btn-complete-round" data-round="${r.id}">Complete Round ${r.number}</button>
                         </div>`;
                     } else if (r.status === 'completed' && window.isAdmin && r.number === rounds[rounds.length - 1].number) {
                         html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem;">
@@ -295,35 +412,117 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (activeTab === 'players') {
                 if (window.isAdmin) {
                     html += `<div class="card mb-4">
-                        <form id="addPlayerForm" class="flex gap-4 items-center">
-                            <input type="text" id="newPlayerName" class="form-control" placeholder="Player Name" required>
-                            <input type="number" id="newPlayerRating" class="form-control" placeholder="Rating" value="${t.default_rating}" required style="width: 120px;">
-                            <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Add Player</button>
+                        <h3 class="mb-4">Add Player</h3>
+                        <form id="addPlayerForm" class="flex gap-2 items-center" style="flex-wrap: wrap;">
+                            <input type="text" id="playerName" class="form-control" placeholder="Player Name" required style="flex: 1; min-width: 200px;">
+                            <select id="playerTitle" class="form-control" style="width: 80px;">
+                                <option value="">Title</option>
+                                <option value="GM">GM</option>
+                                <option value="IM">IM</option>
+                                <option value="FM">FM</option>
+                                <option value="CM">CM</option>
+                                <option value="WGM">WGM</option>
+                                <option value="WIM">WIM</option>
+                                <option value="WFM">WFM</option>
+                                <option value="WCM">WCM</option>
+                            </select>
+                            <select id="playerSex" class="form-control" style="width: 80px;">
+                                <option value="">Sex</option>
+                                <option value="M">M</option>
+                                <option value="F">F</option>
+                            </select>
+                            <input type="text" id="playerBatch" class="form-control" placeholder="Batch" style="width: 100px;">
+                            <input type="number" id="playerRating" class="form-control" placeholder="Rating" value="1200" required style="width: 100px;">
+                            <button type="submit" class="btn btn-primary">Add Player</button>
                         </form>
                     </div>`;
                 }
-                
                 html += `<div class="card table-container"><table>
-                    <thead><tr><th>Name</th><th>Rating</th><th>Status</th>${window.isAdmin ? '<th>Action</th>' : ''}</tr></thead><tbody>`;
+                    <thead><tr><th>Name</th><th>Title</th><th>Sex</th><th>Batch</th><th>Rating</th><th>Active</th>${window.isAdmin ? '<th>Actions</th>' : ''}</tr></thead>
+                    <tbody>`;
                 players.forEach(p => {
-                    let statusBadge = p.active ? '<span class="badge badge-active" style="background:#10b981; color:white;">Active</span>' : '<span class="badge" style="background:#ef4444; color:white;">Inactive</span>';
-                    html += `<tr>
-                        <td style="font-weight: 500; color: white;">${p.name}</td>
-                        <td>${p.rating}</td>
-                        <td>${statusBadge}</td>
-                        ${window.isAdmin ? `<td>
-                            <div class="flex gap-2">
-                                <button class="btn btn-outline btn-sm edit-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" data-rating="${p.rating}" data-active="${p.active}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Edit</button>
-                                <button class="btn btn-outline btn-sm delete-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;">Delete</button>
-                            </div>
-                        </td>` : ''}
-                    </tr>`;
+                    if (editingPlayerId === p.id) {
+                        html += `<tr>
+                            <td><input type="text" id="editName_${p.id}" class="form-control" value="${p.name}" style="width: 100%;"></td>
+                            <td>
+                                <select id="editTitle_${p.id}" class="form-control">
+                                    <option value="" ${p.title === '' ? 'selected' : ''}></option>
+                                    <option value="GM" ${p.title === 'GM' ? 'selected' : ''}>GM</option>
+                                    <option value="IM" ${p.title === 'IM' ? 'selected' : ''}>IM</option>
+                                    <option value="FM" ${p.title === 'FM' ? 'selected' : ''}>FM</option>
+                                    <option value="CM" ${p.title === 'CM' ? 'selected' : ''}>CM</option>
+                                    <option value="WGM" ${p.title === 'WGM' ? 'selected' : ''}>WGM</option>
+                                    <option value="WIM" ${p.title === 'WIM' ? 'selected' : ''}>WIM</option>
+                                    <option value="WFM" ${p.title === 'WFM' ? 'selected' : ''}>WFM</option>
+                                    <option value="WCM" ${p.title === 'WCM' ? 'selected' : ''}>WCM</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select id="editSex_${p.id}" class="form-control">
+                                    <option value="" ${p.sex === '' ? 'selected' : ''}></option>
+                                    <option value="M" ${p.sex === 'M' ? 'selected' : ''}>M</option>
+                                    <option value="F" ${p.sex === 'F' ? 'selected' : ''}>F</option>
+                                </select>
+                            </td>
+                            <td><input type="text" id="editBatch_${p.id}" class="form-control" value="${p.batch || ''}" style="width: 80px;"></td>
+                            <td><input type="number" id="editRating_${p.id}" class="form-control" value="${p.rating}" style="width: 80px;"></td>
+                            <td>
+                                <select id="editActive_${p.id}" class="form-control">
+                                    <option value="1" ${p.active ? 'selected' : ''}>Yes</option>
+                                    <option value="0" ${!p.active ? 'selected' : ''}>No</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn btn-success btn-sm btn-save-player" data-id="${p.id}" style="margin-right: 0.5rem;">Save</button>
+                                <button class="btn btn-outline btn-sm btn-cancel-edit">Discard</button>
+                            </td>
+                        </tr>`;
+                    } else {
+                        html += `<tr class="${!p.active ? 'text-muted' : ''}">
+                            <td><a href="#" class="player-link" data-id="${p.id}" style="color: var(--primary); text-decoration: none;">${p.name}</a></td>
+                            <td>${p.title || ''}</td>
+                            <td>${p.sex || ''}</td>
+                            <td>${p.batch || ''}</td>
+                            <td>${p.rating}</td>
+                            <td>${p.active ? 'Yes' : 'No'}</td>
+                            ${window.isAdmin ? `<td>
+                                <button class="btn btn-outline btn-sm btn-edit-player" data-id="${p.id}" style="margin-right: 0.5rem;">Edit</button>
+                                <button class="btn btn-outline btn-sm btn-delete-player" style="border-color: #ef4444; color: #ef4444;" data-id="${p.id}">Delete</button>
+                            </td>` : ''}
+                        </tr>`;
+                    }
                 });
-                if (players.length === 0) html += `<tr><td colspan="${window.isAdmin ? 4 : 3}" class="text-center text-muted">No players added yet</td></tr>`;
+                if (players.length === 0) html += `<tr><td colspan="7" class="text-center text-muted">No players added yet</td></tr>`;
                 html += `</tbody></table></div>`;
             }
+            
+            html += `<div id="playerModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+                <div class="modal-content card" style="margin: 5% auto; padding: 20px; width: 80%; max-width: 800px; position: relative;">
+                    <span class="close-modal" style="position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                    <div id="playerModalBody"></div>
+                </div>
+            </div>`;
 
             appRoot.innerHTML = html;
+
+            document.querySelectorAll('.player-link').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showPlayerDetails(e.target.dataset.id);
+                });
+            });
+            
+            const modal = document.getElementById('playerModal');
+            if (modal) {
+                modal.querySelector('.close-modal').addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+                window.addEventListener('click', (e) => {
+                    if (e.target == modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
 
             // Bind events
             document.querySelectorAll('.tab[data-tab]').forEach(el => {
@@ -349,78 +548,61 @@ document.addEventListener('DOMContentLoaded', () => {
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             tournament_id: t.id,
-                            name: document.getElementById('newPlayerName').value,
-                            rating: document.getElementById('newPlayerRating').value
+                            name: document.getElementById('playerName').value,
+                            title: document.getElementById('playerTitle').value,
+                            sex: document.getElementById('playerSex').value,
+                            batch: document.getElementById('playerBatch').value,
+                            rating: document.getElementById('playerRating').value
                         })
                     });
-                    renderTournamentDetail(id, 'players'); // reload and stay on players tab
+                    renderTournamentDetail(id, 'players');
                 });
             }
 
-            document.querySelectorAll('.edit-player-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const pid = e.target.dataset.id;
-                    const oldName = e.target.dataset.name;
-                    const oldRating = e.target.dataset.rating;
-                    const oldActive = e.target.dataset.active == "1";
-
-                    const tr = e.target.closest('tr');
-                    
-                    tr.innerHTML = `
-                        <td><input type="text" class="form-control edit-name-input" value="${oldName.replace(/"/g, '&quot;')}" style="padding:0.3rem;"></td>
-                        <td><input type="number" class="form-control edit-rating-input" value="${oldRating}" style="padding:0.3rem; width: 90px;"></td>
-                        <td>
-                            <select class="form-control edit-active-select" style="padding:0.3rem; width: 100px;">
-                                <option value="1" ${oldActive ? 'selected' : ''}>Active</option>
-                                <option value="0" ${!oldActive ? 'selected' : ''}>Inactive</option>
-                            </select>
-                        </td>
-                        <td>
-                            <div class="flex gap-2">
-                                <button class="btn btn-success btn-sm save-player-btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Save</button>
-                                <button class="btn btn-outline btn-sm discard-player-btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Discard</button>
-                            </div>
-                        </td>
-                    `;
-
-                    tr.querySelector('.discard-player-btn').addEventListener('click', () => {
-                        renderTournamentDetail(id, 'players'); // Re-render to revert
-                    });
-
-                    tr.querySelector('.save-player-btn').addEventListener('click', async () => {
-                        const newName = tr.querySelector('.edit-name-input').value.trim();
-                        const newRating = parseInt(tr.querySelector('.edit-rating-input').value) || 1200;
-                        const newActive = parseInt(tr.querySelector('.edit-active-select').value);
-
-                        if (!newName) {
-                            alert('Name cannot be empty');
-                            return;
-                        }
-
-                        const saveBtn = tr.querySelector('.save-player-btn');
-                        saveBtn.disabled = true;
-                        saveBtn.textContent = '...';
-
-                        await fetch('api/players.php', {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                id: pid,
-                                name: newName,
-                                rating: newRating,
-                                active: newActive
-                            })
-                        });
-                        renderTournamentDetail(id, 'players');
-                    });
+            document.querySelectorAll('.btn-edit-player').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    editingPlayerId = parseInt(e.target.dataset.id);
+                    render();
                 });
             });
 
-            document.querySelectorAll('.delete-player-btn').forEach(btn => {
+            document.querySelectorAll('.btn-cancel-edit').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    editingPlayerId = null;
+                    render();
+                });
+            });
+
+            document.querySelectorAll('.btn-save-player').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const pId = e.target.dataset.id;
+                    const newName = document.getElementById(`editName_${pId}`).value.trim();
+                    if (!newName) {
+                        alert('Name cannot be empty');
+                        return;
+                    }
+                    await fetch('api/players.php', {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            id: pId,
+                            name: newName,
+                            title: document.getElementById(`editTitle_${pId}`).value,
+                            sex: document.getElementById(`editSex_${pId}`).value,
+                            batch: document.getElementById(`editBatch_${pId}`).value,
+                            rating: document.getElementById(`editRating_${pId}`).value,
+                            active: document.getElementById(`editActive_${pId}`).value
+                        })
+                    });
+                    editingPlayerId = null;
+                    renderTournamentDetail(id, 'players');
+                });
+            });
+
+            document.querySelectorAll('.btn-delete-player').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const pid = e.target.dataset.id;
-                    const pName = e.target.dataset.name;
-                    if (!confirm(`Are you sure you want to completely delete player "${pName}"?\nWARNING: This will also delete their match history!`)) return;
+                    if (!confirm(`Are you sure you want to completely delete this player?\nWARNING: This will also delete their match history!`)) return;
 
                     await fetch(`api/players.php?id=${pid}`, {
                         method: 'DELETE'

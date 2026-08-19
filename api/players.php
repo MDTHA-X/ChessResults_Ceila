@@ -19,6 +19,9 @@ if ($method === 'GET') {
     $input = json_decode(file_get_contents('php://input'), true);
     $tournament_id = $input['tournament_id'] ?? null;
     $name = $input['name'] ?? '';
+    $title = $input['title'] ?? '';
+    $sex = $input['sex'] ?? '';
+    $batch = $input['batch'] ?? '';
     $rating = $input['rating'] ?? 1200;
     
     if (!$tournament_id || !$name) {
@@ -29,8 +32,8 @@ if ($method === 'GET') {
 
     try {
         DB::query(
-            "INSERT INTO players (tournament_id, name, rating) VALUES (?, ?, ?)",
-            [$tournament_id, $name, $rating]
+            "INSERT INTO players (tournament_id, name, title, sex, batch, rating) VALUES (?, ?, ?, ?, ?, ?)",
+            [$tournament_id, $name, $title, $sex, $batch, $rating]
         );
         $id = DB::get()->lastInsertId();
         echo json_encode(DB::fetch("SELECT * FROM players WHERE id = ?", [$id]));
@@ -43,6 +46,9 @@ if ($method === 'GET') {
     $input = json_decode(file_get_contents('php://input'), true);
     $id = $input['id'] ?? null;
     $name = $input['name'] ?? null;
+    $title = $input['title'] ?? '';
+    $sex = $input['sex'] ?? '';
+    $batch = $input['batch'] ?? '';
     $rating = $input['rating'] ?? null;
     $active = isset($input['active']) ? (int)$input['active'] : null;
 
@@ -54,8 +60,8 @@ if ($method === 'GET') {
 
     try {
         DB::query(
-            "UPDATE players SET name = ?, rating = ?, active = ? WHERE id = ?",
-            [$name, $rating, $active, $id]
+            "UPDATE players SET name = ?, title = ?, sex = ?, batch = ?, rating = ?, active = ? WHERE id = ?",
+            [$name, $title, $sex, $batch, $rating, $active, $id]
         );
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
