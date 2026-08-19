@@ -62,6 +62,21 @@ if ($method === 'GET') {
         http_response_code(400);
         echo json_encode(['error' => 'Failed to update player (name might already exist)']);
     }
+} else if ($method === 'DELETE') {
+    require_login();
+    $id = $_GET['id'] ?? null;
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode(['error' => 'id is required']);
+        exit;
+    }
+    try {
+        DB::query("DELETE FROM players WHERE id = ?", [$id]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Failed to delete player']);
+    }
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Method Not Allowed']);

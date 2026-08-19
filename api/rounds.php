@@ -49,7 +49,7 @@ if ($method === 'GET') {
     
     if ($action === 'generate') {
         $tournament = DB::fetch("SELECT * FROM tournaments WHERE id = ?", [$tournament_id]);
-        $players = DB::fetchAll("SELECT * FROM players WHERE tournament_id = ?", [$tournament_id]);
+        $players = DB::fetchAll("SELECT * FROM players WHERE tournament_id = ? AND active = 1", [$tournament_id]);
         
         $gamesQuery = "SELECT p.round_id, r.number as round, p.white_id, p.black_id, p.result, p.is_bye, p.bye_for_id 
                        FROM pairings p 

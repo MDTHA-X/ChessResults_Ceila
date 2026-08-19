@@ -278,7 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td style="font-weight: 500; color: white;">${p.name}</td>
                         <td>${p.rating}</td>
                         <td>${statusBadge}</td>
-                        ${window.isAdmin ? `<td><button class="btn btn-outline btn-sm edit-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" data-rating="${p.rating}" data-active="${p.active}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Edit</button></td>` : ''}
+                        ${window.isAdmin ? `<td>
+                            <div class="flex gap-2">
+                                <button class="btn btn-outline btn-sm edit-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" data-rating="${p.rating}" data-active="${p.active}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Edit</button>
+                                <button class="btn btn-outline btn-sm delete-player-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;">Delete</button>
+                            </div>
+                        </td>` : ''}
                     </tr>`;
                 });
                 if (players.length === 0) html += `<tr><td colspan="${window.isAdmin ? 4 : 3}" class="text-center text-muted">No players added yet</td></tr>`;
@@ -368,6 +373,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         renderTournamentDetail(id, 'players');
                     });
+                });
+            });
+
+            document.querySelectorAll('.delete-player-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const pid = e.target.dataset.id;
+                    const pName = e.target.dataset.name;
+                    if (!confirm(`Are you sure you want to completely delete player "${pName}"?\nWARNING: This will also delete their match history!`)) return;
+
+                    await fetch(`api/players.php?id=${pid}`, {
+                        method: 'DELETE'
+                    });
+                    renderTournamentDetail(id, 'players');
                 });
             });
             
