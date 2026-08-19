@@ -319,25 +319,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     const oldRating = e.target.dataset.rating;
                     const oldActive = e.target.dataset.active == "1";
 
-                    const newName = prompt("Enter player name:", oldName);
-                    if (newName === null || newName.trim() === '') return;
+                    const tr = e.target.closest('tr');
                     
-                    const newRating = prompt("Enter rating:", oldRating);
-                    if (newRating === null || newRating.trim() === '') return;
+                    tr.innerHTML = `
+                        <td><input type="text" class="form-control edit-name-input" value="${oldName.replace(/"/g, '&quot;')}" style="padding:0.3rem;"></td>
+                        <td><input type="number" class="form-control edit-rating-input" value="${oldRating}" style="padding:0.3rem; width: 90px;"></td>
+                        <td>
+                            <select class="form-control edit-active-select" style="padding:0.3rem; width: 100px;">
+                                <option value="1" ${oldActive ? 'selected' : ''}>Active</option>
+                                <option value="0" ${!oldActive ? 'selected' : ''}>Inactive</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="flex gap-2">
+                                <button class="btn btn-success btn-sm save-player-btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Save</button>
+                                <button class="btn btn-outline btn-sm discard-player-btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Discard</button>
+                            </div>
+                        </td>
+                    `;
 
-                    const activeConfirm = confirm(`Is this player currently ACTIVE in the tournament?\nClick OK for Active, Cancel for Inactive.`);
-
-                    await fetch('api/players.php', {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            id: pid,
-                            name: newName.trim(),
-                            rating: parseInt(newRating) || 1200,
-                            active: activeConfirm ? 1 : 0
-                        })
+                    tr.querySelector('.discard-player-btn').addEventListener('click', () => {
+                        renderTournamentDetail(id, 'players'); // Re-render to revert
                     });
-                    renderTournamentDetail(id, 'players');
+
+                    tr.querySelector('.save-player-btn').addEventListener('click', async () => {
+                        const newName = tr.querySelector('.edit-name-input').value.trim();
+                        const newRating = parseInt(tr.querySelector('.edit-rating-input').value) || 1200;
+                        const newActive = parseInt(tr.querySelector('.edit-active-select').value);
+
+                        if (!newName) {
+                            alert('Name cannot be empty');
+                            return;
+                        }
+
+                        const saveBtn = tr.querySelector('.save-player-btn');
+                        saveBtn.disabled = true;
+                        saveBtn.textContent = '...';
+
+                        await fetch('api/players.php', {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                id: pid,
+                                name: newName,
+                                rating: newRating,
+                                active: newActive
+                            })
+                        });
+                        renderTournamentDetail(id, 'players');
+                    });
                 });
             });
             
