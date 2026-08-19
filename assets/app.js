@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function renderTournamentDetail(id, initialTab = 'standings') {
+    async function renderTournamentDetail(id, initialTab = 'standings', initialRound = null) {
         // We fetch tournament info, players, rounds and standings
         const [tRes, pRes, rRes] = await Promise.all([
             fetch('api/tournaments.php?id=' + id),
@@ -179,6 +179,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const standings = data.standings;
 
         let activeTab = initialTab;
+        let activeRound = initialRound || (rounds.length > 0 ? rounds[rounds.length - 1].number : null);
+
+        // Pre-compute seeds based on rating
+        const sortedForSeed = [...players].sort((a,b) => {
+            if (b.rating !== a.rating) return b.rating - a.rating;
+            return a.name.localeCompare(b.name);
+        });
+        const playerSeeds = {};
+        sortedForSeed.forEach((p, idx) => {
+            playerSeeds[p.id] = idx + 1;
+        });
+        
+        function formatPlayerName(pId) {
+            if (!pId) return 'Unknown';
+            const pl = players.find(x => x.id == pId);
+            if (!pl) return 'Unknown';
+            return `(${playerSeeds[pl.id]}) ${pl.name}`;
+        }
         
         function render() {
             let html = `
@@ -216,10 +234,18 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (activeTab === 'rounds') {
                 html += `<div class="card mb-4 flex justify-between items-center">
                     <h3 class="mt-4">Pairings & Results</h3>
-                    ${window.isAdmin ? '<button id="btnGenerateRound" class="btn btn-primary">Generate Next Round</button>' : ''}
+                    ${window.isAdmin && (rounds.length === 0 || rounds[rounds.length-1].status === 'completed') && rounds.length < t.rounds_count ? `<button id="btnGenerateRound" class="btn btn-primary">Generate Next Round</button>` : ''}
                 </div>`;
                 
-                rounds.slice().reverse().forEach(r => {
+                if (rounds.length > 0) {
+                    html += `<div class="tabs" style="margin-bottom: 1rem;">`;
+                    rounds.forEach(r => {
+                        html += `<div class="tab ${activeRound == r.number ? 'active' : ''}" data-round="${r.number}">Round ${r.number}</div>`;
+                    });
+                    html += `</div>`;
+                    
+                    const r = rounds.find(rx => rx.number == activeRound) || rounds[rounds.length - 1];
+                    
                     html += `<div class="card mb-4">
                         <div class="flex justify-between items-center mb-4">
                             <h4>Round ${r.number}</h4>
@@ -229,8 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             <thead><tr><th>Bd</th><th>White</th><th>Result</th><th>Black</th></tr></thead>
                             <tbody>`;
                     r.pairings.forEach(p => {
-                        let wName = p.is_bye ? 'BYE' : (players.find(pl => pl.id === p.white_id)?.name || 'Unknown');
-                        let bName = p.is_bye ? (players.find(pl => pl.id === p.bye_for_id)?.name || 'Unknown') : (players.find(pl => pl.id === p.black_id)?.name || 'Unknown');
+                        let wName = p.is_bye ? 'BYE' : formatPlayerName(p.white_id);
+                        let bName = p.is_bye ? formatPlayerName(p.bye_for_id) : formatPlayerName(p.black_id);
                         
                         let resultHtml = p.result || '-';
                         if (r.status === 'draft' && !p.is_bye && window.isAdmin) {
@@ -258,7 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn btn-success" id="btnCompleteRound" data-round="${r.id}">Complete Round ${r.number}</button>
                         </div>`;
                     }
-                });
+                } else {
+                    html += `<div class="card"><div class="text-center text-muted" style="padding: 2rem 0;">No rounds generated yet.</div></div>`;
+                }
             } else if (activeTab === 'players') {
                 if (window.isAdmin) {
                     html += `<div class="card mb-4">
@@ -293,9 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
             appRoot.innerHTML = html;
 
             // Bind events
-            document.querySelectorAll('.tab').forEach(el => {
+            document.querySelectorAll('.tab[data-tab]').forEach(el => {
                 el.addEventListener('click', (e) => {
                     activeTab = e.target.dataset.tab;
+                    render();
+                });
+            });
+
+            document.querySelectorAll('.tab[data-round]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    activeRound = parseInt(e.target.dataset.round);
                     render();
                 });
             });
@@ -443,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             round_id: roundId
                         })
                     });
-                    renderTournamentDetail(id, 'rounds');
+                    renderTournamentDetail(id, 'rounds', activeRound);
                 });
             }
         }
