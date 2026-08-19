@@ -180,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let activeTab = initialTab;
         let activeRound = initialRound || (rounds.length > 0 ? rounds[rounds.length - 1].number : null);
+        let editingPlayerId = null;
 
         // Pre-compute seeds based on rating
         const sortedForSeed = [...players].sort((a,b) => {
