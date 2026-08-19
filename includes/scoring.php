@@ -100,7 +100,7 @@ function computeStandings($players, $games) {
     $standings = [];
     foreach ($players as $p) {
         $a = $agg[$p['id']];
-        $realOppScores = array_map(function($o) { return $o['score']; }, array_filter($a['opponents'], function($o) { return $o['real']; }));
+        $realOppScores = array_map(function($o) { return $o['score']; }, array_filter($a['opponents'], function($o) { return $o['real'] ?? false; }));
         $allOppScores = array_map(function($o) { return $o['score']; }, $a['opponents']);
         $buchholz = array_sum($allOppScores) + $a['byes'] * 0.5;
 

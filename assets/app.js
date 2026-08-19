@@ -656,39 +656,54 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.btn-complete-round').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     if (!confirm('Are you sure you want to complete this round? Make sure all results are entered.')) return;
-                    const roundId = e.target.dataset.round;
-                    await fetch('api/rounds.php', {
+                    const roundId = btn.dataset.round;
+                    const res = await fetch('api/rounds.php', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ action: 'complete', tournament_id: t.id, round_id: roundId })
                     });
-                    renderTournamentDetail(id, 'rounds', activeRound);
+                    if (res.ok) {
+                        renderTournamentDetail(id, 'rounds', activeRound);
+                    } else {
+                        const err = await res.json();
+                        alert('Error completing round: ' + err.error);
+                    }
                 });
             });
 
             document.querySelectorAll('.btn-discard-round').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     if (!confirm('Are you sure you want to discard this round? All pairings will be deleted.')) return;
-                    const roundId = e.target.dataset.round;
-                    await fetch('api/rounds.php', {
+                    const roundId = btn.dataset.round;
+                    const res = await fetch('api/rounds.php', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ action: 'delete', tournament_id: t.id, round_id: roundId })
                     });
-                    renderTournamentDetail(id, 'rounds', activeRound - 1 > 0 ? activeRound - 1 : null);
+                    if (res.ok) {
+                        renderTournamentDetail(id, 'rounds', activeRound - 1 > 0 ? activeRound - 1 : null);
+                    } else {
+                        const err = await res.json();
+                        alert('Error discarding round: ' + err.error);
+                    }
                 });
             });
 
             document.querySelectorAll('.btn-reopen-round').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     if (!confirm('Are you sure you want to reopen this round? You will need to complete it again before generating the next round.')) return;
-                    const roundId = e.target.dataset.round;
-                    await fetch('api/rounds.php', {
+                    const roundId = btn.dataset.round;
+                    const res = await fetch('api/rounds.php', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ action: 'reopen', tournament_id: t.id, round_id: roundId })
                     });
-                    renderTournamentDetail(id, 'rounds', activeRound);
+                    if (res.ok) {
+                        renderTournamentDetail(id, 'rounds', activeRound);
+                    } else {
+                        const err = await res.json();
+                        alert('Error reopening round: ' + err.error);
+                    }
                 });
             });
         }
