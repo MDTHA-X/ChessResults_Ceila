@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <thead><tr><th>Bd</th><th>White</th><th>Result</th><th>Black</th></tr></thead>
                             <tbody>`;
                     r.pairings.forEach(p => {
-                        let wName = p.is_bye ? 'BYE' : formatPlayerName(p.white_id);
+                        let wName = p.is_bye ? '' : formatPlayerName(p.white_id);
                         let bName = p.is_bye ? formatPlayerName(p.bye_for_id) : formatPlayerName(p.black_id);
                         
                         let resultHtml = p.result || '-';
@@ -280,8 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     html += `</tbody></table></div>`;
                     
                     if (r.status === 'draft' && window.isAdmin) {
+                        html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem; gap: 1rem;">
+                            <button class="btn btn-outline btn-discard-round" style="border-color: #ef4444; color: #ef4444;" data-round="${r.id}">Discard Round</button>
+                            <button class="btn btn-success btn-complete-round" data-round="${r.id}">Complete Round ${r.number}</button>
+                        </div>`;
+                    } else if (r.status === 'completed' && window.isAdmin && r.number === rounds[rounds.length - 1].number) {
                         html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem;">
-                            <button class="btn btn-success" id="btnCompleteRound" data-round="${r.id}">Complete Round ${r.number}</button>
+                            <button class="btn btn-outline btn-reopen-round" data-round="${r.id}">Reopen Round to Edit Results</button>
                         </div>`;
                     }
                 } else {
@@ -464,23 +469,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             
-            const btnCompleteRound = document.getElementById('btnCompleteRound');
-            if (btnCompleteRound) {
-                btnCompleteRound.addEventListener('click', async () => {
+            document.querySelectorAll('.btn-complete-round').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
                     if (!confirm('Are you sure you want to complete this round? Make sure all results are entered.')) return;
-                    const roundId = btnCompleteRound.dataset.round;
+                    const roundId = e.target.dataset.round;
                     await fetch('api/rounds.php', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            action: 'complete',
-                            tournament_id: t.id,
-                            round_id: roundId
-                        })
+                        body: JSON.stringify({ action: 'complete', tournament_id: t.id, round_id: roundId })
                     });
                     renderTournamentDetail(id, 'rounds', activeRound);
                 });
-            }
+            });
+
+            document.querySelectorAll('.btn-discard-round').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if (!confirm('Are you sure you want to discard this round? All pairings will be deleted.')) return;
+                    const roundId = e.target.dataset.round;
+                    await fetch('api/rounds.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ action: 'delete', tournament_id: t.id, round_id: roundId })
+                    });
+                    renderTournamentDetail(id, 'rounds', activeRound - 1 > 0 ? activeRound - 1 : null);
+                });
+            });
+
+            document.querySelectorAll('.btn-reopen-round').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if (!confirm('Are you sure you want to reopen this round? You will need to complete it again before generating the next round.')) return;
+                    const roundId = e.target.dataset.round;
+                    await fetch('api/rounds.php', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ action: 'reopen', tournament_id: t.id, round_id: roundId })
+                    });
+                    renderTournamentDetail(id, 'rounds', activeRound);
+                });
+            });
         }
         
         render();
