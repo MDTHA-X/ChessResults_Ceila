@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `
             <div class="page-header">
                 <h1>Tournaments</h1>
-                <a href="#new-tournament" class="btn btn-primary">+ New Tournament</a>
+                ${window.isAdmin ? '<a href="#new-tournament" class="btn btn-primary">+ New Tournament</a>' : ''}
             </div>
             <div class="grid grid-cols-2">
         `;
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (activeTab === 'rounds') {
                 html += `<div class="card mb-4 flex justify-between items-center">
                     <h3 class="mt-4">Pairings & Results</h3>
-                    <button id="btnGenerateRound" class="btn btn-primary">Generate Next Round</button>
+                    ${window.isAdmin ? '<button id="btnGenerateRound" class="btn btn-primary">Generate Next Round</button>' : ''}
                 </div>`;
                 
                 rounds.slice().reverse().forEach(r => {
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let bName = p.is_bye ? (players.find(pl => pl.id === p.bye_for_id)?.name || 'Unknown') : (players.find(pl => pl.id === p.black_id)?.name || 'Unknown');
                         
                         let resultHtml = p.result || '-';
-                        if (r.status === 'draft' && !p.is_bye) {
+                        if (r.status === 'draft' && !p.is_bye && window.isAdmin) {
                             resultHtml = `
                                 <select class="form-control result-select" data-pairing="${p.id}" style="width: 100px; padding: 0.2rem;">
                                     <option value="" ${!p.result ? 'selected' : ''}>-</option>
@@ -253,20 +253,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     html += `</tbody></table></div>`;
                     
-                    if (r.status === 'draft') {
+                    if (r.status === 'draft' && window.isAdmin) {
                         html += `<div class="flex" style="justify-content: flex-end; margin-top: -1rem; margin-bottom: 2rem;">
                             <button class="btn btn-success" id="btnCompleteRound" data-round="${r.id}">Complete Round ${r.number}</button>
                         </div>`;
                     }
                 });
             } else if (activeTab === 'players') {
-                html += `<div class="card mb-4">
-                    <form id="addPlayerForm" class="flex gap-4 items-center">
-                        <input type="text" id="newPlayerName" class="form-control" placeholder="Player Name" required>
-                        <input type="number" id="newPlayerRating" class="form-control" placeholder="Rating" value="${t.default_rating}" required style="width: 120px;">
-                        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Add Player</button>
-                    </form>
-                </div>`;
+                if (window.isAdmin) {
+                    html += `<div class="card mb-4">
+                        <form id="addPlayerForm" class="flex gap-4 items-center">
+                            <input type="text" id="newPlayerName" class="form-control" placeholder="Player Name" required>
+                            <input type="number" id="newPlayerRating" class="form-control" placeholder="Rating" value="${t.default_rating}" required style="width: 120px;">
+                            <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Add Player</button>
+                        </form>
+                    </div>`;
+                }
                 
                 html += `<div class="card table-container"><table>
                     <thead><tr><th>Name</th><th>Rating</th><th>Status</th></tr></thead><tbody>`;

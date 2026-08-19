@@ -39,6 +39,9 @@ session_start();
         </div>
     </template>
 
+    <script>
+        window.isAdmin = <?= isset($_SESSION['admin_id']) ? 'true' : 'false' ?>;
+    </script>
     <script src="assets/app.js"></script>
 </body>
 </html>
