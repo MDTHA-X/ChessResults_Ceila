@@ -195,7 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!pId) return 'Unknown';
             const pl = players.find(x => x.id == pId);
             if (!pl) return 'Unknown';
-            return `(${playerSeeds[pl.id]}) ${pl.name}`;
+            const titleStr = pl.title ? pl.title + ' ' : '';
+            return `(${playerSeeds[pl.id]}) ${titleStr}${pl.name} (${pl.rating})`;
         }
 
         function getFideDp(p) {
@@ -208,8 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
             pId = parseInt(pId);
             const pl = players.find(x => x.id === pId);
             if (!pl) return;
-            const st = standings.find(x => x.player_id === pId);
-            const rank = standings.findIndex(x => x.player_id === pId) + 1;
+            const st = standings.find(x => x.playerId === pId);
+            const rank = standings.findIndex(x => x.playerId === pId) + 1;
             
             let games = [];
             rounds.filter(r => r.status === 'completed' || r.status === 'draft').forEach(r => {
@@ -232,13 +233,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isBye = g.pairing.is_bye;
                 let oppId = isWhite ? g.pairing.black_id : g.pairing.white_id;
                 let opp = players.find(x => x.id === oppId);
-                let oppSt = standings.find(x => x.player_id === oppId);
+                let oppSt = standings.find(x => x.playerId === oppId);
                 
                 let sNo = isBye ? '-' : (playerSeeds[oppId] || '-');
                 let oppName = isBye ? 'BYE' : (opp ? opp.name : '-');
                 let oppRtg = isBye ? '-' : (opp ? opp.rating : '-');
                 let oppBatch = isBye ? '-' : (opp ? (opp.batch || '-') : '-');
-                let oppPts = isBye ? '-' : (oppSt ? oppSt.points : 0);
+                let oppPts = isBye ? '-' : (oppSt ? oppSt.score : 0);
                 
                 let resStr = '-';
                 if (g.round.status === 'completed' || g.pairing.result) {
@@ -291,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="color: var(--text-muted);">Starting rank</div><div>${playerSeeds[pId]}</div>
                     <div style="color: var(--text-muted);">Rating</div><div>${pl.rating}</div>
                     <div style="color: var(--text-muted);">Performance</div><div>${oppCount > 0 ? Rp : '-'}</div>
-                    <div style="color: var(--text-muted);">Points</div><div>${st ? st.points : 0}</div>
+                    <div style="color: var(--text-muted);">Points</div><div>${st ? st.score : 0}</div>
                     <div style="color: var(--text-muted);">Rank</div><div>${rank}</div>
                 </div>
                 ${gamesHtml}
@@ -336,11 +337,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 standings.forEach((st, i) => {
                     html += `<tr>
                         <td>${i + 1}</td>
-                        <td>${playerSeeds[st.player_id]}</td>
-                        <td><a href="#" class="player-link" data-id="${st.player_id}" style="color: var(--primary); text-decoration: none;">${st.name}</a></td>
+                        <td>${playerSeeds[st.playerId]}</td>
+                        <td><a href="#" class="player-link" data-id="${st.playerId}" style="color: var(--primary); text-decoration: none;">${st.name}</a></td>
                         <td>${st.rating}</td>
-                        <td style="font-weight: bold;">${st.points}</td>
-                        <td>${st.buchholz_cut1}</td>
+                        <td style="font-weight: bold;">${st.score}</td>
+                        <td>${st.medianBuchholz}</td>
                         <td>${st.buchholz}</td>
                     </tr>`;
                 });
