@@ -77,4 +77,4 @@ CREATE INDEX idx_pairings_round ON pairings(round_id);
 -- Default admin user: password 'admin'
 -- password_hash is generated with PHP password_hash('admin', PASSWORD_DEFAULT)
 INSERT IGNORE INTO admins (username, password_hash, is_super, created_at) VALUES 
-('admin', '$2y$10$w8F.W.L7z5A/wR4L.oO43e6m0LhVb3W3r5T.Y9FhN.w8F.W.L7z5A', 1, UNIX_TIMESTAMP());
+('admin', '$2y$12$kvym7ZWZOiuEwVUaZ29g6OdviW9aID9.cTHpHMu6yX62DzEcySVxi', 1, UNIX_TIMESTAMP());
