@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function renderTournamentDetail(id) {
+    async function renderTournamentDetail(id, initialTab = 'standings') {
         // We fetch tournament info, players, rounds and standings
         const [tRes, pRes, rRes] = await Promise.all([
             fetch('api/tournaments.php?id=' + id),
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rounds = data.rounds;
         const standings = data.standings;
 
-        let activeTab = 'standings';
+        let activeTab = initialTab;
         
         function render() {
             let html = `
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             rating: document.getElementById('newPlayerRating').value
                         })
                     });
-                    renderTournamentDetail(id); // reload
+                    renderTournamentDetail(id, 'players'); // reload and stay on players tab
                 });
             }
             
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         })
                     });
                     if (res.ok) {
-                        renderTournamentDetail(id);
+                        renderTournamentDetail(id, 'rounds');
                     } else {
                         const err = await res.json();
                         alert('Error generating round: ' + err.error);
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             round_id: roundId
                         })
                     });
-                    renderTournamentDetail(id);
+                    renderTournamentDetail(id, 'rounds');
                 });
             }
         }
